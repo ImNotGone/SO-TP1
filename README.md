@@ -8,6 +8,7 @@ Table of Contents
 -----------------
 
  * [Requirements](#requirements)
+ * [Build](#build)
  * [Usage](#usage)
 
 Requirements
@@ -17,6 +18,13 @@ This project requires the following to be built & to run
 
  * [Make][make]
  * [md5sum][md5sum]
+
+Build
+-----
+To create both ./md5 and ./view the following command should be executed
+```sh
+make all
+```
 
 Usage
 -----
