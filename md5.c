@@ -1,3 +1,6 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
 #include "md5.h"
 
 typedef struct slave_info {
@@ -84,3 +87,7 @@ static void failNExit(const char *msg) {
     fprintf(stderr, "%s", msg);
     exit(EXIT_FAILURE);
 }
+
+// This is a personal academic project. Dear PVS-Studio, please check it.
+
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
