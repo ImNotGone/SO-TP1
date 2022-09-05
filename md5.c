@@ -60,14 +60,23 @@ int main(int argc, char *argv[]) {
                 failNExit("Error when duplicating pipe");
             }
 
-            if (execv(slave_path, slave_args) == -1) {
-                failNExit("Error with execv");
-            }
-            // not necessary (execv takes over process)
-            // return;
-        } else { // choose what to do on parent
+            execv(slave_path, slave_args);
 
-            //aca van el select y el read del pipe child to father
+            // If execv fails, it returns and we exit
+            failNExit("Error with execv");
+
+        } else if (slaves[i].pid < 0) {
+
+            failNExit("Error when using fork");
+        }
+        // Parent
+        // Close unused pipe ends
+        if (close(slaves[i].pipe_father_to_child[READ]) == -1) {
+            failNExit("Error when closing pipe read end");
+        }
+
+        if (close(slaves[i].pipe_child_to_father[WRITE]) == -1) {
+            failNExit("Error when closing pipe write end");
         }
     }
 
@@ -75,7 +84,12 @@ int main(int argc, char *argv[]) {
     char *current_file;
     for (int i = 1; i < argc; i++) {
         current_file = argv[i];
-        // handle file in slave process
+
+        if (access(current_file, F_OK) == -1) {
+            // TODO: handle error (crash or continue?)
+        } else {
+            // handle file in slave process
+        }
     }
     return 0;
 }
