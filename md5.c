@@ -1,9 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-static void failNExit(const char *msg);
+#include "md5.h"
 
 typedef struct slave_info {
     pid_t pid;
@@ -14,8 +9,8 @@ typedef struct slave_info {
 } Tslave_info;
 
 #define SLAVE_COUNT 5
-#define READ 0
-#define WRITE 1
+#define READ 1
+#define WRITE 0
 
 int main(int argc, char *argv[]) {
 
@@ -57,7 +52,7 @@ int main(int argc, char *argv[]) {
             }
 
             // Connect child to father pipe to child stdout
-            if (close(slaves[i].pipe_child_to_father[WRITE]) == -1) {
+            if (close(slaves[i].pipe_child_to_father[READ]) == -1) {
                 failNExit("Error when closing pipe read end");
             }
 
@@ -71,6 +66,8 @@ int main(int argc, char *argv[]) {
             // not necessary (execv takes over process)
             // return;
         } else { // choose what to do on parent
+
+            //aca van el select y el read del pipe child to father
         }
     }
 
