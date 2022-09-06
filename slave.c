@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define MAX_CMD_LEN 2048
 #define MD5_OUT_LEN 32
@@ -19,8 +20,6 @@ static void failNExit(const char *msg);
 // Filename read from stdin
 // Filename, PID & md5sum get writen to stdout
 int main (int argc, char *argv[]) {
-    // TODO: ver si usamos setvbuf (mejor select?)
-    // setvbuf(stdout, NULL, _IONBF, 0);
 
     // === getline ===
     char * filename = NULL;
@@ -29,17 +28,17 @@ int main (int argc, char *argv[]) {
     // ===
 
     // === cmd ===
-    char cmd_buff[MAX_CMD_LEN]   = {0}; // command to execute
-    char md5_output[MD5_OUT_LEN] = {0}; // command output
+    char cmd_buff[MAX_CMD_LEN]   = {0};   // command to execute
+    char md5_output[MD5_OUT_LEN+1] = {0}; // command output
     // ===
+
+    setvbuf(stdout, NULL, _IONBF, 0);
 
     // read filename from stdin
     while((nread = getline(&filename, &len, stdin)) > 0) {
 
-        // TODO: check the line
         // remove the '\n'
         filename[nread - 1] = '\0';
-        // printf("%s", filename); TODO: remove handy debug print ;P
 
         // build the command to execute by
         // printing the command to cmd_buff
@@ -63,10 +62,13 @@ int main (int argc, char *argv[]) {
         // TODO: cleanup
     }
 
-    // TODO: check for more necessary 'frees'
+    // catch getline error if ocurred
+    if(errno == EINVAL || errno == ENOMEM) {
+        perror("getline");
+        exit(EXIT_FAILURE);
+    }
 
     free(filename);         // SOURCE: man getline
-    close(STDIN_FILENO);    // close pipe
     return EXIT_SUCCESS;
 }
 
@@ -79,6 +81,7 @@ void formatOutput(char * output, FILE * stream){
     while (i < MD5_OUT_LEN  && (c = getc(stream))>0 ){
         output[i++]=c;
     }
+    output[i] = '\0';
 }
 
 static void failNExit(const char *msg) {
