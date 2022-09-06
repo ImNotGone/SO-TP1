@@ -6,6 +6,9 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <semaphore.h>
 
 #define MAX_PSM_SIZE INT_MAX
 
@@ -13,7 +16,9 @@ typedef int fd_t;
 
 typedef struct psmCDT {
     // char name[MAX_NAME_LEN];
-    const char * name;
+    const char * shm_name;
+    const char * sem_name;
+    sem_t * sem;
     char * addr;
     int write_off;
     int read_off;
@@ -26,8 +31,8 @@ static int decCounter(psmADT psm);
 static int incCounter(psmADT psm);
 
 // TODO: SEMAPHORES
-psmADT newPsm(const char *name, int oflag, mode_t mode) {
-    if(name == NULL) {
+psmADT newPsm(const char *shm_name, const char * sem_name, int oflag, mode_t mode) {
+    if(shm_name == NULL) {
         errno = EINVAL; // Invalid argument
         return NULL;
     }
@@ -37,10 +42,11 @@ psmADT newPsm(const char *name, int oflag, mode_t mode) {
     }
 
     // TODO: CHECK FAILURE
-    //strncpy(new->name, name, MAX_NAME_LEN - 1);
-    new->name = name;
+    //strncpy(new->shm_name, name, MAX_NAME_LEN - 1);
+    new->shm_name = shm_name;
+    new->sem_name = sem_name;
 
-    new->fd = shm_open(new->name, oflag, mode);
+    new->fd = shm_open(new->shm_name, oflag, mode);
     if(new->fd == -1) {
         free(new);
         return NULL;
@@ -51,10 +57,23 @@ psmADT newPsm(const char *name, int oflag, mode_t mode) {
     new->size = MAX_PSM_SIZE;
     new->counter_pos = new->size;
 
-    // If the user wants to create it, use ftruncate
-    if((oflag & O_CREAT) && ftruncate(new->fd, new->size*sizeof(char)) == -1) {
-        freePsm(new);
-        return NULL;
+    if(oflag & O_CREAT) {
+        // If the user wants to create it, use ftruncate
+        if(ftruncate(new->fd, new->size*sizeof(char)) == -1) {
+            freePsm(new);
+            return NULL;
+        }
+        new->sem = sem_open(new->sem_name, O_CREAT, mode, 0);
+        if(new->sem == SEM_FAILED) {
+            freePsm(new);
+            return NULL;
+        }
+    } else {
+        new->sem = sem_open(new->sem_name, 0);
+        if(new->sem == SEM_FAILED) {
+            freePsm(new);
+            return NULL;
+        }
     }
 
     int prot = PROT_READ; // default
@@ -68,9 +87,9 @@ psmADT newPsm(const char *name, int oflag, mode_t mode) {
         return NULL;
     }
 
+
     // leave space for a current users counter
     new->size--;
-
     incCounter(new);
 
     return new;
@@ -115,8 +134,10 @@ void freePsm(psmADT psm) {
     if(remaining_users == 0) {
         // CHECK: shm_unlink (only last user should close it)
         // maybe solvabe using a counter in the actual memory space
-        shm_unlink(psm->name);
+        shm_unlink(psm->shm_name);
+        sem_unlink(psm->sem_name);
     }
+    sem_close(psm->sem);
     free(psm);
     return;
 }
