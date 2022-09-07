@@ -152,8 +152,6 @@ size_t readPshm(pshmADT pshm, char *buff, size_t bytes) {
         }
     }
 
-    sem_post(pshm->sem);
-
     buff[bytes_read] = '\0';
     return bytes_read + 1;
 }
