@@ -11,18 +11,18 @@
 
 #define MAX_NAME_LEN 256
 
-typedef struct psmCDT * psmADT;
+typedef struct pshmCDT * pshmADT;
 
 // creates a new posix shared memory space
-psmADT newPsm(const char * shm_name, const char * sem_name, int oflag, mode_t mode);
+pshmADT newPshm(const char * shm_name, const char * sem_name, int oflag, mode_t mode);
 
 // allows for writing in the posix shared memory space
-size_t writePsm(psmADT psm, const char * buff, size_t bytes);
+size_t writePshm(pshmADT pshm, const char * buff, size_t bytes);
 
 // allows for reading in the posix shared memory space
-size_t readPsm(psmADT psm, char * buff, size_t bytes);
+size_t readPshm(pshmADT pshm, char * buff, size_t bytes);
 
 // frees the posix shared memory space
-void freePsm(psmADT psm);
+void freePshm(pshmADT pshm);
 
 #endif

@@ -1,4 +1,4 @@
-#include "psmADT.h"
+#include "pshmADT.h"
 #include <stdio.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -14,7 +14,7 @@
 
 typedef int fd_t;
 
-typedef struct psmCDT {
+typedef struct pshmCDT {
     // char name[MAX_NAME_LEN];
     const char * shm_name;
     const char * sem_name;
@@ -25,18 +25,18 @@ typedef struct psmCDT {
     fd_t fd;
     size_t size;
     size_t counter_pos;
-} psmCDT;
+} pshmCDT;
 
-static int decCounter(psmADT psm);
-static int incCounter(psmADT psm);
+static int decCounter(pshmADT pshm);
+static int incCounter(pshmADT pshm);
 
 // TODO: SEMAPHORES
-psmADT newPsm(const char *shm_name, const char * sem_name, int oflag, mode_t mode) {
+pshmADT newPshm(const char *shm_name, const char * sem_name, int oflag, mode_t mode) {
     if(shm_name == NULL) {
         errno = EINVAL; // Invalid argument
         return NULL;
     }
-    psmADT new = malloc(sizeof(psmCDT));
+    pshmADT new = malloc(sizeof(pshmCDT));
     if(new == NULL) {
         return NULL;
     }
@@ -60,18 +60,18 @@ psmADT newPsm(const char *shm_name, const char * sem_name, int oflag, mode_t mod
     if(oflag & O_CREAT) {
         // If the user wants to create it, use ftruncate
         if(ftruncate(new->fd, new->size*sizeof(char)) == -1) {
-            freePsm(new);
+            freePshm(new);
             return NULL;
         }
         new->sem = sem_open(new->sem_name, O_CREAT, mode, 0);
         if(new->sem == SEM_FAILED) {
-            freePsm(new);
+            freePshm(new);
             return NULL;
         }
     } else {
         new->sem = sem_open(new->sem_name, 0);
         if(new->sem == SEM_FAILED) {
-            freePsm(new);
+            freePshm(new);
             return NULL;
         }
     }
@@ -83,7 +83,7 @@ psmADT newPsm(const char *shm_name, const char * sem_name, int oflag, mode_t mod
 
     new->addr = mmap(NULL, new->size*sizeof(char), prot, MAP_SHARED, new->fd, 0);
     if(new->addr == (void *) -1) {
-        freePsm(new);
+        freePshm(new);
         return NULL;
     }
 
@@ -96,8 +96,8 @@ psmADT newPsm(const char *shm_name, const char * sem_name, int oflag, mode_t mod
 }
 
 // TODO: SEMAPHORES
-size_t writePsm(psmADT psm, const char * buff, size_t bytes) {
-    if(psm == NULL) {
+size_t writePshm(pshmADT pshm, const char * buff, size_t bytes) {
+    if(pshm == NULL) {
         errno = EINVAL;
         return 0;
     }
@@ -109,8 +109,8 @@ size_t writePsm(psmADT psm, const char * buff, size_t bytes) {
 }
 
 // TODO: SEMAPHORES
-size_t readPsm(psmADT psm, char * buff, size_t bytes) {
-    if(psm == NULL) {
+size_t readPshm(pshmADT pshm, char * buff, size_t bytes) {
+    if(pshm == NULL) {
         errno = EINVAL;
         return 0;
     }
@@ -122,34 +122,34 @@ size_t readPsm(psmADT psm, char * buff, size_t bytes) {
     return bytes_read;
 }
 
-void freePsm(psmADT psm) {
-    if(psm == NULL) {
+void freePshm(pshmADT pshm) {
+    if(pshm == NULL) {
         errno = EINVAL;
         return;
     }
-    int remaining_users = decCounter(psm);
+    int remaining_users = decCounter(pshm);
 
-    munmap(psm->addr, psm->size);
-    close(psm->fd);
+    munmap(pshm->addr, pshm->size);
+    close(pshm->fd);
     if(remaining_users == 0) {
         // CHECK: shm_unlink (only last user should close it)
         // maybe solvabe using a counter in the actual memory space
-        shm_unlink(psm->shm_name);
-        sem_unlink(psm->sem_name);
+        shm_unlink(pshm->shm_name);
+        sem_unlink(pshm->sem_name);
     }
-    sem_close(psm->sem);
-    free(psm);
+    sem_close(pshm->sem);
+    free(pshm);
     return;
 }
 
 // TODO: SEMAPHORES ???
-static int decCounter(psmADT psm) {
-    int qty_users = psm->addr[psm->counter_pos]--;
+static int decCounter(pshmADT pshm) {
+    int qty_users = pshm->addr[pshm->counter_pos]--;
     return qty_users;
 }
 
 // TODO: SEMAPHORES ???
-static int incCounter(psmADT psm) {
-    int qty_users = psm->addr[psm->counter_pos]++;
+static int incCounter(pshmADT pshm) {
+    int qty_users = pshm->addr[pshm->counter_pos]++;
     return qty_users;
 }
