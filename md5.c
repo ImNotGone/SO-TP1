@@ -1,7 +1,21 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+#define _GNU_SOURCE
 #include "md5.h"
+#include "ADTs/pshmADT.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+static int checkPath(const char * path);
+static int getFileData(int fd, char * buffer, int length);
+static void setFileData(int fd, char * file);
+
 
 typedef struct slave_info {
     pid_t pid;
@@ -11,16 +25,32 @@ typedef struct slave_info {
     char md5[32]; // deberia ser 32 + 1 prob
 } Tslave_info;
 
-#define SLAVE_COUNT 5
-#define READ 1
-#define WRITE 0
+#define SLAVE_COUNT 1
+#define READ 0
+#define WRITE 1
 
 int main(int argc, char *argv[]) {
+
 
     // Error in case of bad call
     if (argc == 1) {
         failNExit("Usage: md5sum <file1> <file2> ...");
     }
+
+    int fileQty=0;
+    for (int i = 1; i < argc; i++){
+        if (checkPath(argv[i]))
+           fileQty++;
+    }
+
+
+    //initialize shared memory
+    pshmADT pshm = newPshm("shm", "sem",O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+
+    //create output file
+    int outputFileFd = open("outputFile",O_CREAT|O_WRONLY|O_TRUNC, 00666);
+
+
 
     char *slave_path = "./slave";
     char *slave_args[] = {slave_path, NULL};
@@ -83,17 +113,41 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // pass files to slaves
-    char *current_file;
-    for (int i = 1; i < argc; i++) {
-        current_file = argv[i];
-
-        if (access(current_file, F_OK) == -1) {
-            // TODO: handle error (crash or continue?)
-        } else {
-            // handle file in slave process
-        }
+    // Sleep and send two files
+    sleep(2);
+    char *current_file = argv[1];
+    if (fileQty>=2){
+        dprintf(slaves[0].pipe_father_to_child[WRITE], current_file);
+        dprintf(slaves[0].pipe_father_to_child[WRITE], "\n");
+        current_file=argv[2];
+        dprintf(slaves[0].pipe_father_to_child[WRITE], current_file);
+        dprintf(slaves[0].pipe_father_to_child[WRITE], "\n");
     }
+
+
+    char buffer[4000]={0};
+
+    int readFiles=0;
+    int writtenFiles=2;
+
+    //Read and Write files
+    while (readFiles<fileQty){
+        int nByte = getFileData(slaves[0].pipe_child_to_father[READ],buffer,4000);
+        buffer[nByte]=0;
+        if (writtenFiles<fileQty){
+            current_file = argv[writtenFiles];
+            setFileData(slaves[0].pipe_father_to_child[WRITE], current_file);
+            writtenFiles++;
+        }
+
+        printf("%s", buffer);
+        write(outputFileFd,buffer,nByte);
+        writePshm(pshm, buffer,nByte);
+        readFiles++;
+    }
+
+
+
     return 0;
 }
 
@@ -102,6 +156,20 @@ static void failNExit(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
-// This is a personal academic project. Dear PVS-Studio, please check it.
+static int getFileData(int fd, char * buffer, int length){
+    return read(fd,buffer, length);
+}
 
+static void setFileData(int fd, char * file){
+    dprintf(fd, file);
+    dprintf(fd, "\n");
+}
+
+
+static int checkPath(const char * path){
+    struct stat validation;
+    return stat(path, &validation) >= 0 && S_ISREG(validation.st_mode);
+}
+
+// This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
