@@ -21,9 +21,9 @@ typedef int fd_t;
 typedef struct pshmCDT {
     // char name[MAX_NAME_LEN];
     const char * shm_name;
-    const char * sem_wr_name;
+    const char * sem_rw_name;
     const char * sem_connected_name;
-    sem_t * sem_wr;
+    sem_t * sem_rw;
     sem_t * sem_connected;
     char * addr;
     int write_off;
@@ -50,7 +50,7 @@ pshmADT newPshm(const char *shm_name, int oflag, mode_t mode) {
     // TODO: CHECK FAILURE
     // strncpy(new->shm_name, name, MAX_NAME_LEN - 1);
     new->shm_name = shm_name;
-    new->sem_wr_name = SEM_RW;
+    new->sem_rw_name = SEM_RW;
     new->sem_connected_name = SEM_CONNECTED;
 
     new->fd = shm_open(new->shm_name, oflag, mode);
@@ -73,8 +73,8 @@ pshmADT newPshm(const char *shm_name, int oflag, mode_t mode) {
         }
     }
 
-    new->sem_wr = sem_open(new->sem_wr_name, O_CREAT, mode, 0);
-    if (new->sem_wr == SEM_FAILED) {
+    new->sem_rw = sem_open(new->sem_rw_name, O_CREAT, mode, 0);
+    if (new->sem_rw == SEM_FAILED) {
         perror("sem r/w");
         freePshm(new);
         return NULL;
@@ -129,7 +129,7 @@ size_t writePshm(pshmADT pshm, const char *buff, size_t bytes) {
         }
     }
 
-    sem_post(pshm->sem_wr);
+    sem_post(pshm->sem_rw);
 
     return bytes_writen;
 }
@@ -141,7 +141,7 @@ size_t readPshm(pshmADT pshm, char *buff, size_t bytes) {
         return -1;
     }
 
-    sem_wait(pshm->sem_wr);
+    sem_wait(pshm->sem_rw);
     // Critical section
     ssize_t bytes_read;
     // Read byte for byte until bytes is reached, if byte equals END_IDENTIFIER,
@@ -174,10 +174,10 @@ void freePshm(pshmADT pshm) {
         // CHECK: shm_unlink (only last user should close it)
         // maybe solvabe using a counter in the actual memory space
         shm_unlink(pshm->shm_name);
-        sem_unlink(pshm->sem_wr_name);
+        sem_unlink(pshm->sem_rw_name);
         sem_unlink(pshm->sem_connected_name);
     }
-    sem_close(pshm->sem_wr);
+    sem_close(pshm->sem_rw);
     sem_close(pshm->sem_connected);
     free(pshm);
     return;
