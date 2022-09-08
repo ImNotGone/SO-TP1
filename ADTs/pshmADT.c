@@ -107,7 +107,6 @@ size_t writePshm(pshmADT pshm, const char *buff, size_t bytes) {
         return -1;
     }
     
-    sem_wait(pshm->sem);
     // Critical section
     ssize_t bytes_writen;
     for (bytes_writen = 0; bytes_writen < bytes; bytes_writen++) {
