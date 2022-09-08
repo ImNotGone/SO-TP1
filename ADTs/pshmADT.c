@@ -30,7 +30,6 @@ typedef struct pshmCDT {
     int read_off;
     fd_t fd;
     size_t size;
-    size_t counter_pos;
 } pshmCDT;
 
 #define SEM_RW "/SEM_RW"
@@ -64,7 +63,6 @@ pshmADT newPshm(const char *shm_name, int oflag, mode_t mode) {
     new->write_off = 0;
     new->read_off = 0;
     new->size = MAX_PSM_SIZE;
-    new->counter_pos = new->size;
 
     if (oflag & O_CREAT) {
         // If the user wants to create it, use ftruncate
@@ -103,8 +101,6 @@ pshmADT newPshm(const char *shm_name, int oflag, mode_t mode) {
         return NULL;
     }
 
-    // leave space for a current users counter
-    new->size--;
     return new;
 }
 
@@ -174,7 +170,7 @@ void freePshm(pshmADT pshm) {
     munmap(pshm->addr, pshm->size);
     close(pshm->fd);
     if (remaining_users == 0) {
-        puts("LEAVING...");
+        puts("LEAVING... <= REMOVE THIS PRINT AFTER");
         // CHECK: shm_unlink (only last user should close it)
         // maybe solvabe using a counter in the actual memory space
         shm_unlink(pshm->shm_name);
