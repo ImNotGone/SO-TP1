@@ -14,7 +14,7 @@
 typedef struct pshmCDT * pshmADT;
 
 // creates a new posix shared memory space
-pshmADT newPshm(const char * shm_name, const char * sem_name, int oflag, mode_t mode);
+pshmADT newPshm(const char * shm_name, int oflag, mode_t mode);
 
 // allows for writing in the posix shared memory space
 size_t writePshm(pshmADT pshm, const char * buff, size_t bytes);

@@ -40,24 +40,29 @@ char * map_shm(char * name, size_t size, bool creator) {
         perror("mmap");
         return NULL;
     }
+    // sem_init
     return out;
 }
 
 ssize_t write_shm(char * addr, char * buff, size_t bytes) {
     strncpy(addr, buff, bytes);
+    //sem_post
     return 1;
 }
 
 ssize_t read_shm(char * addr, char * buff, size_t bytes) {
+    //sem_wait
     snprintf(buff, bytes, addr);
     return 1;
 }
 
 
 bool unmap_shm(char * addr, size_t size) {
+    //sem_close
     return (munmap(addr, size) != SHM_ERROR);
 }
 
 bool destroy_shm(char * name) {
+    //sem_unlink
     return (shm_unlink(name) != SHM_ERROR);
 }
