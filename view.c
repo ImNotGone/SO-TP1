@@ -10,7 +10,6 @@
 
 #define BUFFER_SIZE 1024
 #define SCAN_FORMAT_SIZE 16
-#define MODE 0666
 
 static void failNExit(const char *msg);
 
@@ -23,22 +22,21 @@ int main(int argc, char *argv[]) {
     if (argc == 1) {
         // Read arguments from stdin ($> pshmName semName fileAmount)
         char pshmName[BUFFER_SIZE];
-        char semName[BUFFER_SIZE];
         char scanFormat[SCAN_FORMAT_SIZE];
 
         // scanf "%(BUFFER_SIZE)s %(BUFFER_SIZE)s %d"
-        sprintf(scanFormat, "%%%ds %%%ds %%d", BUFFER_SIZE, BUFFER_SIZE);
-        if (scanf(scanFormat, pshmName, semName, &fileAmount) != 3) {
+        sprintf(scanFormat, "%%%ds %%d", BUFFER_SIZE);
+        if (scanf(scanFormat, pshmName, &fileAmount) != 2) {
             errno = EINVAL;
             failNExit("Invalid stdin arguments");
         }
 
-        pshm = newPshm(pshmName, semName, O_RDWR, MODE);
+        pshm = newPshm(pshmName, O_RDWR, S_IRUSR | S_IWUSR);
 
-    } else if (argc == 4) {
+    } else if (argc == 3) {
         // Get arguments from argv
-        pshm = newPshm(argv[1], argv[2], O_RDWR, MODE);
-        fileAmount = strtol(argv[3], NULL, 10);
+        pshm = newPshm(argv[1], O_RDWR, S_IRUSR | S_IWUSR);
+        fileAmount = strtol(argv[2], NULL, 10);
 
     } else {
         errno = EINVAL;

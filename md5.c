@@ -1,21 +1,21 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
+// http://www.viva64.com
 #define _GNU_SOURCE
 #include "md5.h"
 #include "ADTs/pshmADT.h"
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-static int checkPath(const char * path);
-static int getFileData(int fd, char * buffer, int length);
-static void setFileData(int fd, char * file);
-
+static int checkPath(const char *path);
+static int getFileData(int fd, char *buffer, int length);
+static void setFileData(int fd, char *file);
 
 typedef struct slave_info {
     pid_t pid;
@@ -31,30 +31,30 @@ typedef struct slave_info {
 
 int main(int argc, char *argv[]) {
 
-
     // Error in case of bad call
     if (argc == 1) {
         failNExit("Usage: md5sum <file1> <file2> ...");
     }
 
-    int fileQty=0;
-    for (int i = 1; i < argc; i++){
+    int fileQty = 0;
+    for (int i = 1; i < argc; i++) {
         if (checkPath(argv[i]))
-           fileQty++;
+            fileQty++;
     }
 
+    // Initialize shared memory
+    pshmADT pshm = newPshm("shm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 
-    //initialize shared memory
-    pshmADT pshm = newPshm("shm", "sem",O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    // Print views arguments for use with pipe
+    printf("%s %d", "shm", fileQty);
 
-    //create output file
-    int outputFileFd = open("outputFile",O_CREAT|O_WRONLY|O_TRUNC, 00666);
-
-
+    // Create output file
+    int outputFileFd = open("outputFile", O_CREAT | O_WRONLY | O_TRUNC, 00666);
 
     char *slave_path = "./slave";
     char *slave_args[] = {slave_path, NULL};
     Tslave_info slaves[SLAVE_COUNT] = {0};
+
     // Initialize slaves
     for (int i = 0; i < SLAVE_COUNT; i++) {
         // Create pipes for each slave
@@ -115,38 +115,37 @@ int main(int argc, char *argv[]) {
 
     // Sleep and send two files
     sleep(2);
+
     char *current_file = argv[1];
-    if (fileQty>=2){
-        dprintf(slaves[0].pipe_father_to_child[WRITE], current_file);
+
+    if (fileQty >= 2) {
+        dprintf(slaves[0].pipe_father_to_child[WRITE], "%s", current_file);
         dprintf(slaves[0].pipe_father_to_child[WRITE], "\n");
-        current_file=argv[2];
-        dprintf(slaves[0].pipe_father_to_child[WRITE], current_file);
+        current_file = argv[2];
+        dprintf(slaves[0].pipe_father_to_child[WRITE], "%s", current_file);
         dprintf(slaves[0].pipe_father_to_child[WRITE], "\n");
     }
 
+    char buffer[4000] = {0};
 
-    char buffer[4000]={0};
+    int readFiles = 0;
+    int writtenFiles = 2;
 
-    int readFiles=0;
-    int writtenFiles=2;
-
-    //Read and Write files
-    while (readFiles<fileQty){
-        int nByte = getFileData(slaves[0].pipe_child_to_father[READ],buffer,4000);
-        buffer[nByte]=0;
-        if (writtenFiles<fileQty){
+    // Read and Write files
+    while (readFiles < fileQty) {
+        int nByte = getFileData(slaves[0].pipe_child_to_father[READ], buffer, 4000);
+        buffer[nByte] = 0;
+        if (writtenFiles < fileQty) {
             current_file = argv[writtenFiles];
             setFileData(slaves[0].pipe_father_to_child[WRITE], current_file);
             writtenFiles++;
         }
 
         printf("%s", buffer);
-        write(outputFileFd,buffer,nByte);
-        writePshm(pshm, buffer,nByte);
+        write(outputFileFd, buffer, nByte);
+        writePshm(pshm, buffer, nByte);
         readFiles++;
     }
-
-
 
     return 0;
 }
@@ -156,20 +155,20 @@ static void failNExit(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
-static int getFileData(int fd, char * buffer, int length){
-    return read(fd,buffer, length);
+static int getFileData(int fd, char *buffer, int length) {
+    return read(fd, buffer, length);
 }
 
-static void setFileData(int fd, char * file){
-    dprintf(fd, file);
+static void setFileData(int fd, char *file) {
+    dprintf(fd, "%s", file);
     dprintf(fd, "\n");
 }
 
-
-static int checkPath(const char * path){
+static int checkPath(const char *path) {
     struct stat validation;
     return stat(path, &validation) >= 0 && S_ISREG(validation.st_mode);
 }
 
 // This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
+// http://www.viva64.com
