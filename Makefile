@@ -22,6 +22,12 @@ slave: slave.o $(OBJECTS_ADT)
 view: view.o $(OBJECTS_ADT)
 	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
 
+testwrite: testwrite.o
+	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
+
+testread: testread.o
+	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
+
 clean:
 	@rm -rf *.o
 	@rm -rf $(BINARIES)
