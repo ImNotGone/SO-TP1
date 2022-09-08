@@ -155,7 +155,7 @@ size_t readPshm(pshmADT pshm, char *buff, size_t bytes) {
         }
     }
 
-    buff[bytes_read] = '\0';
+    buff[bytes_read + 1] = '\0';
     return bytes_read + 1;
 }
 
