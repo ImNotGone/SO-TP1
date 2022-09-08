@@ -28,7 +28,6 @@ int main(int argc, char *argv[]) {
 
         // scanf "%(BUFFER_SIZE)s %(BUFFER_SIZE)s %d"
         sprintf(scanFormat, "%%%ds %%%ds %%d", BUFFER_SIZE, BUFFER_SIZE);
-        printf("scanFormat: %s\n", scanFormat);
         if (scanf(scanFormat, pshmName, semName, &fileAmount) != 3) {
             errno = EINVAL;
             failNExit("Invalid stdin arguments");
