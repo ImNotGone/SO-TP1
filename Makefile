@@ -37,6 +37,9 @@ pvs: $(CREDENTIALS)
 	pvs-studio-analyzer analyze
 	plog-converter -a '64:1,2,3;GA:1,2,3;OP:1,2,3' -t tasklist -o report.tasks PVS-Studio.log
 
+cpp-check:
+	cppcheck --quiet --enable=all --force --inconclusive .
+
 clean:
 	@rm -rf *.o
 	@rm -rf $(BINARIES)
@@ -44,4 +47,4 @@ clean:
 	@rm -rf $(PVS_OUTPUT)
 	@cd ADTs; make clean
 
-.PHONY: all clean debug pvs
+.PHONY: all clean debug pvs cpp-check
