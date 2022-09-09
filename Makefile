@@ -28,9 +28,20 @@ testwrite: testwrite.o
 testread: testread.o
 	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
 
+$(CREDENTIALS):
+	    pvs-studio-analyzer credentials "PVS-Studio Free" "FREE-FREE-FREE-FREE"
+
+pvs: $(CREDENTIALS)
+	make clean
+	pvs-studio-analyzer trace -- make
+	pvs-studio-analyzer analyze
+	plog-converter -a '64:1,2,3;GA:1,2,3;OP:1,2,3' -t tasklist -o report.tasks PVS-Studio.log
+
 clean:
 	@rm -rf *.o
 	@rm -rf $(BINARIES)
+	@rm -rf $(MD5_OUTPUT)
+	@rm -rf $(PVS_OUTPUT)
 	@cd ADTs; make clean
 
-.PHONY: all clean debug
+.PHONY: all clean debug pvs

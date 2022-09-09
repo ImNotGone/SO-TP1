@@ -1,6 +1,5 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
-// http://www.viva64.com
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "ADTs/pshmADT.h"
 #include "ADTs/smADT.h"
 #include <errno.h>
@@ -68,8 +67,3 @@ static void failNExit(const char *msg) {
     perror(msg);
     exit(EXIT_FAILURE);
 }
-
-// This is a personal academic project. Dear PVS-Studio, please check it.
-
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
-// http://www.viva64.com

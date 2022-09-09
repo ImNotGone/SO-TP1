@@ -1,7 +1,5 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
-
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
-// http://www.viva64.com
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #define _GNU_SOURCE
 #include "md5.h"
 #include "ADTs/pshmADT.h"
@@ -31,6 +29,7 @@ typedef struct slave_info {
 
 int main(int argc, char *argv[]) {
 
+    setvbuf(stdout, NULL, _IONBF, 0);
     // Error in case of bad call
     if (argc == 1) {
         failNExit("Usage: md5sum <file1> <file2> ...");
@@ -147,6 +146,7 @@ int main(int argc, char *argv[]) {
         readFiles++;
     }
 
+    freePshm(pshm);
     return 0;
 }
 
@@ -168,7 +168,3 @@ static int checkPath(const char *path) {
     struct stat validation;
     return stat(path, &validation) >= 0 && S_ISREG(validation.st_mode);
 }
-
-// This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
-// http://www.viva64.com

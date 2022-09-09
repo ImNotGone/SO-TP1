@@ -1,7 +1,5 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
-// http://www.viva64.com
-
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #define _GNU_SOURCE // SOURCE: man getline
 #include <errno.h>
 #include <stdio.h>
@@ -100,7 +98,3 @@ static int checkPath(char *path) {
     struct stat validation;
     return stat(path, &validation) >= 0 && S_ISREG(validation.st_mode);
 }
-
-// This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java:
-// http://www.viva64.com

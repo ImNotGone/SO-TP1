@@ -7,3 +7,9 @@ slave
 view
 testwrite
 testread
+# ignore pvs credentials
+.config/PVS-Studio/*
+# ignore pvs output
+PVS-Studio.log
+report.tasks
+strace_out

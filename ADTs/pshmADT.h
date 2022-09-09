@@ -1,7 +1,9 @@
 #ifndef _PSM_ADT_H
 #define _PSM_ADT_H
 
+#ifndef _BSD_SOURCE
 #define _BSD_SOURCE // SOURCE: man ftruncate (docker)
+#endif
 
 #include <unistd.h>
 #include <sys/types.h>
