@@ -17,8 +17,8 @@ typedef struct smCDT * smADT;
 
 smADT newSm(int fileQty, char **files);
 
-int smFilesLeft(smADT sm);
+int smHasFilesLeft(smADT sm);
 
-ssize_t smSendNRead(smADT sm, char * buffer, int bufferSize);
+ssize_t smRetrieve(smADT sm, char * buffer, int bufferSize);
 
 void freeSm(smADT sm);

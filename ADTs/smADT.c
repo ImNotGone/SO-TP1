@@ -1,5 +1,6 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+#define _GNU_SOURCE
 #include "smADT.h"
 
 typedef struct slave_info {
@@ -59,7 +60,7 @@ smADT newSm(int fileQty, char **files) {
     return new;
 }
 
-int smFilesLeft(smADT sm) {
+int smHasFilesLeft(smADT sm) {
     if (sm == NULL) {
         return -1;
     }
@@ -76,7 +77,7 @@ int smFilesLeft(smADT sm) {
     return 0;
 }
 
-ssize_t smSendNRead(smADT sm, char *buffer, int bufferSize) {
+ssize_t smRetrieve(smADT sm, char *buffer, int bufferSize) {
 
     // Update file descriptor set
     if (pollSlaves(sm) == -1) {
