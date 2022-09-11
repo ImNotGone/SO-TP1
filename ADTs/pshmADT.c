@@ -91,18 +91,19 @@ ssize_t writePshm(pshmADT pshm, const char *buff, size_t bytes) {
     }
 
     // Critical section
-    size_t bytesWritten;
+    ssize_t bytesWritten;
     for  (bytesWritten = 0; bytesWritten < bytes; bytesWritten++) {
 
         // Stop writing if string ends
-        if (buff [bytesWritten] == '\0') {
+        if (buff[bytesWritten] == '\0') {
             break;
         }
 
-        pshm->addr[pshm->writeOff] = buff [bytesWritten];
+        pshm->addr[pshm->writeOff++] = buff[bytesWritten];
 
         // Stop writing at end of line
-        if (buff [bytesWritten] == END_IDENTIFIER) {
+        if (buff[bytesWritten] == END_IDENTIFIER) {
+            bytesWritten++;
             break;
         }
     }
@@ -120,20 +121,21 @@ ssize_t readPshm(pshmADT pshm, char *buff, size_t bytes) {
     }
     sem_wait(pshm->semRw);
     // Critical section
-    size_t bytesRead;
+    ssize_t bytesRead;
     // Read byte for byte until bytes is reached, if byte equals END_IDENTIFIER,
     // stop reading
     for (bytesRead = 0; bytesRead < bytes; bytesRead++) {
-        buff[bytesRead] = pshm->addr[pshm->readOff];
+        buff[bytesRead] = pshm->addr[pshm->readOff++];
 
         // Stop reading at end of line
         if (pshm->addr[pshm->readOff] == END_IDENTIFIER) {
+            bytesRead++;
             break;
         }
     }
 
     if(bytesRead < bytes) {
-        buff[bytesRead++] = '\0';
+        buff[bytesRead] = '\0';
     }
 
     return bytesRead;
