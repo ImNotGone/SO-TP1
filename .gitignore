@@ -7,6 +7,8 @@ slave
 view
 testwrite
 testread
+# ignore md5 output
+md5.log
 # ignore pvs credentials
 .config/PVS-Studio/*
 # ignore pvs output

@@ -1,13 +1,8 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-#include "ADTs/pshmADT.h"
-#include "ADTs/smADT.h"
-#include <errno.h>
-#include <semaphore.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "view.h"
 
-#define BUFFER_SIZE 1024
+#define SCAN_FORMAT "%%%ds %%d"
 #define SCAN_FORMAT_SIZE 16
 
 static void failNExit(const char *msg);
@@ -19,12 +14,12 @@ int main(int argc, char *argv[]) {
 
     // Parse arguments
     if (argc == 1) {
-        // Read arguments from stdin ($> pshmName semName fileAmount)
+        // Read arguments from stdin ($> pshmName fileAmount)
         char pshmName[BUFFER_SIZE];
         char scanFormat[SCAN_FORMAT_SIZE];
 
         // scanf "%(BUFFER_SIZE)s %(BUFFER_SIZE)s %d"
-        sprintf(scanFormat, "%%%ds %%d", BUFFER_SIZE);
+        sprintf(scanFormat, SCAN_FORMAT, BUFFER_SIZE);
         if (scanf(scanFormat, pshmName, &fileAmount) != 2) {
             errno = EINVAL;
             failNExit("Invalid stdin arguments");
@@ -35,7 +30,7 @@ int main(int argc, char *argv[]) {
     } else if (argc == 3) {
         // Get arguments from argv
         pshm = newPshm(argv[1], O_RDWR, S_IRUSR | S_IWUSR);
-        fileAmount = strtol(argv[2], NULL, 10);
+        fileAmount = strtol(argv[2], NULL, 10); // Text to NUM (Base 10)
 
     } else {
         errno = EINVAL;
