@@ -1,0 +1,20 @@
+./ADTs is not a file
+File: ./Makefile.inc, PID: 2046, md5: 504e8fced7594982141878c999071906
+File: ./md5, PID: 2047, md5: 4bd6b3995ba78a077bb5d48afbcb2f45
+File: ./md5.h, PID: 2048, md5: 255c239c3e7a18e5d7d5353517164bfb
+File: ./outputFile, PID: 2049, md5: d41d8cd98f00b204e9800998ecf8427e
+File: ./slave.c, PID: 2050, md5: 1df1a07fef4cba2527ebc647ef09910c
+File: ./Makefile, PID: 2045, md5: 086479619a4de6928c5e426d632038c8
+File: ./README.md, PID: 2046, md5: c402207ecc1b23d200df34ccc21553ba
+File: ./md5.c, PID: 2047, md5: 548a0122ad54ed660d98fbc45fd671f8
+File: ./md5.o, PID: 2048, md5: f50a07a2f845ab6a2c576466ec91548d
+File: ./slave, PID: 2049, md5: 8c971efd7beb4147e91d8baae44b36a8
+File: ./slave.o, PID: 2050, md5: 29ae882edd2058c66cb94e2dd9956aca
+File: ./testread, PID: 2045, md5: a516ba29dbf4c17f6a4f52cd8674dfb9
+File: ./testread.c, PID: 2046, md5: 3fd5c558e80b75bd864e4ef46f515b90
+File: ./testread.o, PID: 2047, md5: 15bedc8cedfce6a6900b39e6bb9d2949
+File: ./testwrite, PID: 2048, md5: b67002152ceee790d10824e29d89e39c
+File: ./testwrite.c, PID: 2049, md5: ad606c3048616dcbd75e0c6aaff49c16
+File: ./testwrite.o, PID: 2050, md5: f22747b4d58988618dc7393beae8c406
+File: ./view, PID: 2045, md5: cc5335d2c2d14d46a7cfd974b7e213fa
+File: ./view.c, PID: 2046, md5: 4f02621ed6a554d7c6e95ae70dcb703e
