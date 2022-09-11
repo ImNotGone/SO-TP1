@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     printf("%s %d\n", "shm", fileQty);
 
     // Initialize slaves
-    smADT sm = newSm(fileQty, files, PATH_TO_SLAVE);
+    smADT sm = newSm(fileQty, files);
     if (sm == NULL) {
         failNExit("Error creating slave manager");
     }

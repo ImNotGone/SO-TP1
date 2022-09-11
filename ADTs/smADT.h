@@ -14,7 +14,7 @@
 
 typedef struct smCDT * smADT;
 
-smADT newSm();
+smADT newSm(int fileQty, char ** files);
 
 int addSlave();
 
