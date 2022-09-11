@@ -1,13 +1,14 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 #include "md5.h"
-
-static int checkPath(const char *path);
-static void failNExit(const char *msg);
 
 #define READ 0
 #define WRITE 1
+#define MD5_LOG_FILE_NAME "md5.log"
+
+typedef int fd_t;
+
+static void failNExit(const char *msg);
 
 int main(int argc, char *argv[]) {
 
@@ -15,63 +16,69 @@ int main(int argc, char *argv[]) {
 
     // Error in case of bad call
     if (argc == 1) {
-        failNExit("Usage: md5sum <file1> <file2> ...");
-    }
-
-    // Check files, TODO: only send correct files for processing or send all and check in child
-    int fileQty = 0;
-    for (int i = 1; i < argc; i++) {
-        if (checkPath(argv[i]))
-            fileQty++;
+        char errorBuff[MAX_OUTPUT];
+        snprintf(errorBuff, MAX_OUTPUT, "Usage: %s <file1> <file2>", argv[0]);
+        failNExit(errorBuff);
     }
 
     // Initialize shared memory
     pshmADT pshm = newPshm("shm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-
-    // Print views arguments for use with pipe
-    printf("%s %d\n", "shm", fileQty);
+    if (pshm == NULL) {
+        failNExit("Error creating shared memory");
+    }
 
     // Create output file
-    int outputFileFd = open("outputFile", O_CREAT | O_WRONLY | O_TRUNC, 00666);
+    fd_t md5LogFile = open(MD5_LOG_FILE_NAME, O_CREAT | O_WRONLY | O_TRUNC, 00666);
+    if (md5LogFile == -1) {
+        failNExit("Error opening log file");
+    }
 
+    // Files to process
+    char ** files = &argv[1];
+    int fileQty = argc - 1;
+
+    // Communicate with view process
+    printf("%s %d\n", "shm", fileQty);
+
+    // Initialize slaves
+    smADT sm = newSm(fileQty, files, PATH_TO_SLAVE);
+    if (sm == NULL) {
+        failNExit("Error creating slave manager");
+    }
 
     sleep(2);
 
-    char **files = &argv[1];
+    char buffer[MAX_OUTPUT] = {0};
 
-    // Initialize slaves
-    smADT sm = newSm(fileQty, files, MIN_FILES_PER_SLAVE);
-
-    // Retrieve info from slaves
-    int bytesRead = 0;
-    char buffer[BUFFER_SIZE] = {0};
-
-    while (smHasFilesLeft(sm) > 0) {
-        bytesRead = smRetrieve(sm, buffer, BUFFER_SIZE);
-        if (bytesRead == -1) {
-            failNExit("Error when reading/sending from/to slave");
+    while(hasNextFile(sm)){
+        // Read from slave
+        int nBytes= smRead(sm, buffer, MAX_OUTPUT);
+        if (nBytes == -1) {
+            failNExit("Error reading from slave");
         }
 
-        // Print to output file & shared memory
-        if (bytesRead > 0) {
-            write(outputFileFd, buffer, bytesRead);
-            writePshm(pshm, buffer, bytesRead);
+        // Print to output file and shared memory
+        if (write(md5LogFile, buffer,nBytes) == -1) {
+            failNExit("Error writing to log file");
+        }
+
+        if(writePshm(pshm, buffer, nBytes) == 0){
+            failNExit("Error writing to shared memory");
         }
     }
 
     // Free resources
-    close(outputFileFd);
-    freeSm(sm);
     freePshm(pshm);
+    freeSm(sm);
+
+    if (close(md5LogFile) == -1) {
+        failNExit("Error closing log file");
+    }
+
     return 0;
 }
 
 static void failNExit(const char *msg) {
-    perror(msg);
+    fprintf(stderr, "%s", msg);
     exit(EXIT_FAILURE);
-}
-
-static int checkPath(const char *path) {
-    struct stat validation;
-    return stat(path, &validation) >= 0 && S_ISREG(validation.st_mode);
 }

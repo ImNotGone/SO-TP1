@@ -1,3 +1,7 @@
+#ifndef _MD5_H
+#define _MD5_H
+
+#define _GNU_SOURCE
 #include "ADTs/pshmADT.h"
 #include "ADTs/smADT.h"
 #include <fcntl.h>
@@ -8,5 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define BUFFER_SIZE 1024
-#define MIN_FILES_PER_SLAVE 2
+#define PATH_TO_SLAVE "./slave"
+#define MAX_OUTPUT 4096
+
+#endif

@@ -5,29 +5,30 @@
 
 typedef struct slave_pipe {
     // Pipe fds
-    int father_to_child;
-    int child_to_father;
+    int fatherToChild;
+    int childToFather;
 } slave_pipe_t;
 
 typedef struct smCDT {
     // Slave info
-    int slaves_dim;
-    int slaves_qty;
-    slave_pipe_t *slave_pipes;
+    int slavesDim;
+    int slavesQty;
+    slave_pipe_t *slavePipes;
 
     // Files to process
-    int files_sent;
-    int files_received;
-    int file_qty;
+    int filesSent;
+    int filesReceived;
+    int fileQty;
     char **files;
 
     // Set for select
-    fd_set child_to_father_fds;
+    fd_set childToFatherFds;
 
 } smCDT;
 
-#define WRITE 1
 #define READ 0
+#define WRITE 1
+#define ERROR -1
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 static void sendFile(smADT sm, char *file, int pipeFd);
@@ -37,83 +38,99 @@ static int createSlave(smADT sm);
 static int calculateMaxSlaveQty(int fileQty, int minFilesPerSlave);
 
 smADT newSm(int fileQty, char **files, int minFilesPerSlave) {
+    if(files == NULL || minFilesPerSlave <= 0 || fileQty <= 0) {
+        errno = EINVAL;
+        return NULL;
+    }
+
     smADT new = malloc(sizeof(smCDT));
     if (new == NULL) {
         return NULL;
     }
 
     // Slaves
-    new->slaves_dim = calculateMaxSlaveQty(fileQty, minFilesPerSlave); // +1 = celing criollo
+    new->slavesDim = calculateMaxSlaveQty(fileQty, minFilesPerSlave); // +1 = celing criollo
 
-    new->slave_pipes = malloc(sizeof(slave_pipe_t) * new->slaves_dim);
-    if (new->slave_pipes == NULL) {
-        free(new);
+    new->slavePipes = malloc(sizeof(slave_pipe_t) * new->slavesDim);
+    if (new->slavePipes == NULL) {
+        freeSm(new);
         return NULL;
     }
 
-    new->slaves_qty = 0;
+    new->slavesQty = 0;
 
     // Files
-    new->file_qty = fileQty;
-    new->files_sent = 0;
-    new->files_received = 0;
+    new->fileQty = fileQty;
+    new->filesSent = 0;
+    new->filesReceived = 0;
     new->files = files;
 
     // Initialize file descriptor set
-    FD_ZERO(&new->child_to_father_fds);
+    FD_ZERO(&new->childToFatherFds);
 
     return new;
 }
 
 int smHasFilesLeft(smADT sm) {
     if (sm == NULL) {
-        return -1;
+        errno = EINVAL;
+        return 0;
     }
 
-    return sm->files_received < sm->file_qty;
+    return sm->filesReceived < sm->fileQty;
 }
 
 ssize_t smRetrieve(smADT sm, char *buffer, int bufferSize) {
 
     // Update file descriptor set
-    if (pollSlaves(sm) == -1) {
-        return -1;
+    if (pollSlaves(sm) == ERROR) {
+        return ERROR;
     }
 
     // Send file to first available slave and read response
-    for (int i = 0; i < sm->slaves_qty; i++) {
-        slave_pipe_t *currentSlave = &sm->slave_pipes[i];
+    for (int i = 0; i < sm->slavesQty; i++) {
+        slave_pipe_t *currentSlave = &sm->slavePipes[i];
 
         // Check if slave is available
-        if (FD_ISSET(currentSlave->child_to_father, &sm->child_to_father_fds)) {
+        if (FD_ISSET(currentSlave->childToFather, &sm->childToFatherFds)) {
 
             // Retrieve info from slave
-            int bytesRead = readFile(sm, buffer, bufferSize, currentSlave->child_to_father);
+            int bytesRead = readFile(sm, buffer, bufferSize, currentSlave->childToFather);
+
+            if (bytesRead == ERROR) {
+                return ERROR;
+            }
 
             // Send next file to slave
-            sendFile(sm, sm->files[sm->files_sent], currentSlave->father_to_child);
+            sendFile(sm, sm->files[sm->filesSent], currentSlave->fatherToChild);
             return bytesRead;
         }
     }
 
     // No slave available, create a new one if needed
-    if (sm->slaves_qty < sm->slaves_dim) {
-        createSlave(sm);
+    if (sm->slavesQty < sm->slavesDim) {
+        if (createSlave(sm) == ERROR) {
+            return ERROR;
+        }
     }
 
     return 0;
 }
 
 void freeSm(smADT sm) {
-
-    // Free slave resources
-    for (int i = 0; i < sm->slaves_qty; i++) {
-        close(sm->slave_pipes[i].father_to_child);
-        close(sm->slave_pipes[i].child_to_father);
+    if (sm == NULL) {
+        return;
     }
 
-    // Free sm resources
-    free(sm->slave_pipes);
+    if (sm->slavePipes != NULL) {
+        // Free slave resources
+        for (int i = 0; i < sm->slavesQty; i++) {
+            close(sm->slavePipes[i].fatherToChild);
+            close(sm->slavePipes[i].childToFather);
+        }
+        free(sm->slavePipes);
+    }
+
     free(sm);
     return;
 }
@@ -131,20 +148,25 @@ static int calculateMaxSlaveQty(int fileQty, int minFilesPerSlave) {
 // Sends info to slave
 static void sendFile(smADT sm, char *file, int pipeFd) {
     // Do not send if there are no more files
-    if (sm->files_sent >= sm->file_qty) {
+    if (sm->filesSent >= sm->fileQty) {
         return;
     }
 
     dprintf(pipeFd, "%s\n", file);
-    sm->files_sent++;
+    sm->filesSent++;
 }
 
 // Reads info from slave
 static int readFile(smADT sm, char *buffer, int bufferSize, int pipeFd) {
     int bytesRead = read(pipeFd, buffer, bufferSize);
+
+    if (bytesRead == ERROR) {
+        return ERROR;
+    }
+
     buffer[bytesRead] = '\0';
 
-    sm->files_received++;
+    sm->filesReceived++;
 
     return bytesRead + 1;
 }
@@ -152,99 +174,94 @@ static int readFile(smADT sm, char *buffer, int bufferSize, int pipeFd) {
 // TODO: better error handling
 static int createSlave(smADT sm) {
     if (sm == NULL) {
-        errno = ENOMEM;
-        return -1;
+        errno = EINVAL;
+        return ERROR;
     }
 
     slave_pipe_t *newSlave = malloc(sizeof(slave_pipe_t));
+    
+    if (newSlave == NULL) {
+        return ERROR;
+    }
 
     // Create pipes
     int parentToChild[2];
     int childToParent[2];
 
-    if (pipe(parentToChild) == -1 || pipe(childToParent) == -1) {
-        return -1;
+    if (pipe(parentToChild) == ERROR || pipe(childToParent) == ERROR) {
+        return ERROR;
     }
 
     // Assign pipes
-    newSlave->father_to_child = parentToChild[WRITE];
-    newSlave->child_to_father = childToParent[READ];
+    newSlave->fatherToChild = parentToChild[WRITE];
+    newSlave->childToFather = childToParent[READ];
 
     // Update slave info
-    sm->slave_pipes[sm->slaves_qty] = *newSlave;
-    sm->slaves_qty++;
+    sm->slavePipes[sm->slavesQty] = *newSlave;
+    sm->slavesQty++;
 
     // Send first file
-    sendFile(sm, sm->files[sm->files_sent], newSlave->father_to_child);
+    sendFile(sm, sm->files[sm->filesSent], newSlave->fatherToChild);
 
     // Fork
     int pid = fork();
     if (pid < 0) {
-        return -1;
+        return ERROR;
     }
     // Connect pipes between father and child
     if (pid == 0) {
 
-        // Close other slave slave pipes
-        for (int i = 0; i < sm->slaves_qty - 1; i++) {
-            close(sm->slave_pipes[i].father_to_child);
-            close(sm->slave_pipes[i].child_to_father);
+        // Close other slave & unused parent pipe ends
+        for (int i = 0; i < sm->slavesQty - 1; i++) {
+            if (close(sm->slavePipes[i].fatherToChild) == ERROR || close(sm->slavePipes[i].childToFather) == ERROR) {
+                exit(EXIT_FAILURE);;
+            }
         }
 
-        // Connect father to child pipe to child stdin
-        if (close(parentToChild[WRITE]) == -1) {
+        if (close(parentToChild[WRITE]) == ERROR || close(childToParent[READ]) == ERROR) {
+            exit(EXIT_FAILURE);;
+        }
+
+        // Connect father to child pipe to child stdin & child to father pipe to child stdout
+        if (dup2(parentToChild[READ], STDIN_FILENO) == ERROR || dup2(childToParent[WRITE], STDOUT_FILENO) == ERROR) {
             exit(EXIT_FAILURE);
         }
 
-        if (dup2(parentToChild[READ], STDIN_FILENO) == -1) {
-            exit(EXIT_FAILURE);
-        }
-
-        // Connect child to father pipe to child stdout
-        if (close(childToParent[READ]) == -1) {
-            exit(EXIT_FAILURE);
-        }
-
-        if (dup2(childToParent[WRITE], STDOUT_FILENO) == -1) {
-            exit(EXIT_FAILURE);
-        }
-
-        // Execute slave progran
+        // Execute slave program, if it fails it returns and we exit
         execv(SLAVE_PATH, (char **){NULL});
 
         exit(EXIT_FAILURE);
     }
 
     // Parent
-    // Close unused pipe ends
-    if (close(parentToChild[READ]) == -1) {
-        return -1;
+    // Close unused slave pipe ends
+    if (close(parentToChild[READ]) == ERROR || close(childToParent[WRITE]) == ERROR) {
+        return ERROR;
     }
 
-    if (close(childToParent[WRITE]) == -1) {
-        return -1;
-    }
-
-    return 1;
+    return 0;
 }
 
 static int pollSlaves(smADT sm) {
-
+    if(sm == NULL) {
+        errno = EINVAL;
+        return ERROR;
+    }
+    
     int nfds = -1;
 
     struct timeval timeout = {.tv_sec = 0, .tv_usec = 0};
 
-    for (int i = 0; i < sm->slaves_qty; i++) {
-        FD_SET(sm->slave_pipes[i].child_to_father, &sm->child_to_father_fds);
-        nfds = MAX(nfds, sm->slave_pipes[i].child_to_father);
+    for (int i = 0; i < sm->slavesQty; i++) {
+        FD_SET(sm->slavePipes[i].childToFather, &sm->childToFatherFds);
+        nfds = MAX(nfds, sm->slavePipes[i].childToFather);
     }
 
     // Check which slaves have finished
-    if (select(nfds + 1, &sm->child_to_father_fds, NULL, NULL, sm->slaves_qty == sm->slaves_dim ? NULL : &timeout) == -1) {
+    if (select(nfds + 1, &sm->childToFatherFds, NULL, NULL, sm->slavesQty == sm->slavesDim ? NULL : &timeout) == ERROR) {
         freeSm(sm);
-        return -1;
+        return ERROR;
     }
-
-
+    
     return 0;
 }
