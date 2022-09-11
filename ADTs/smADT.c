@@ -1,13 +1,9 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "smADT.h"
-#include <stdlib.h>
-#include <sys/select.h>
-#include <unistd.h>
 
 #define READ 0
 #define WRITE 1
-#define SLAVE_PATH "./slave"
 #define MAX(a,b) ((a)>(b)? (a):(b))
 
 typedef int fd_t;
@@ -18,47 +14,57 @@ typedef struct pipe {
 } pipe_t;
 
 typedef struct smCDT {
-    int filec;
-    int f_sent;
-    int f_processed;
-    char ** filev;
+    // Files to process
+    int fileQty;
+    int filesSent;
+    int filesProcessed;
+    char ** files;
 
-
-    int sqty;
-    pipe_t * pipe;
-    fd_set rfds;
-    int to_be_read;
+    // Slave info
+    int slaveQty;
+    pipe_t * pipes;
+    fd_set readFds;
+    int toBeRead;
 
 } smCDT;
 
-#define MAX_FILES_PER_SLAVE 4
+#define ERROR -1
 
-static void sendFile(smADT sm,fd_t fd, char * filename);
+static void sendFile(smADT sm, fd_t fd, char * filename);
 static int startSlaves(smADT sm);
-static void failNExit(const char *msg);
+static int calculateSlaveQty(int fileQty, int filesPerSlave); 
 
-smADT newSm(int filec, char ** filev) {
+smADT newSm(int fileQty, char ** files) {
+    if(files == NULL || fileQty <= 0) {
+        errno = EINVAL;
+        return NULL;
+    }
+    
     smADT new = malloc(sizeof(smCDT));
     if(new == NULL) {
         return NULL;
     }
 
-    new->filec = filec;
-    new->filev = filev;
-    new->sqty = filec/MAX_FILES_PER_SLAVE + 1; // +1 = celing criollo
-    new->to_be_read = 0;
-    new->f_processed = 0;
-    new->f_sent = 0;
-    // initialize file descriptor set
-    FD_ZERO(&new->rfds);
+    // Files
+    new->fileQty = fileQty;
+    new->files = files;
+    new->filesProcessed = 0;
+    new->filesSent = 0;
 
-    new->pipe = malloc(sizeof(pipe_t)*new->sqty);
-    if(new->pipe == NULL) {
-        free(new);
+    // Slaves
+    new->slaveQty = calculateSlaveQty(fileQty, MAX_FILES_PER_SLAVE);
+    new->toBeRead = 0;
+    new->pipes = malloc(sizeof(pipe_t)*new->slaveQty);
+    if(new->pipes == NULL) {
+        freeSm(new);
         return NULL;
     }
 
-    if(startSlaves(new) == -1) {
+    // Initialize file descriptor set
+    FD_ZERO(&new->readFds);
+
+    // Start slaves
+    if(startSlaves(new) == ERROR) {
         freeSm(new);
         return NULL;
     }
@@ -67,154 +73,168 @@ smADT newSm(int filec, char ** filev) {
 
 ssize_t smRead(smADT sm, char * buff, size_t bytes) {
     ssize_t bytesRead = 0;
-    int nfds=-1;
 
-    // if there are remaining fds to read, read them before calling select
-    //si le agrego el if toberead<=0 se cuelga
-    if (sm->to_be_read<=0){
-        for (int i = 0; i < sm->sqty; i++){
-            FD_SET(sm->pipe[i].out, &sm->rfds);
-            nfds=MAX(nfds,sm->pipe[i].out);
+    // If there are remaining fds to read, read them before calling select
+    if (sm->toBeRead <= 0) {
+        int nfds = -1;
+
+        // Add slave fd to set
+        for (int i = 0; i < sm->slaveQty; i++) {
+            FD_SET(sm->pipes[i].out, &sm->readFds);
+            nfds = MAX(nfds,sm->pipes[i].out);
         }
 
-        sm->to_be_read = select(nfds+1, &sm->rfds, NULL, NULL, NULL);
-        if(sm->to_be_read == -1) {
+        // Check which slaves have finished
+        sm->toBeRead = select(nfds+1, &sm->readFds, NULL, NULL, NULL);
+        if(sm->toBeRead == -1) {
             freeSm(sm);
-            return -1;
+            return ERROR;
         }
     }
 
+    // Find first available slave
     int sindex = -1;
     int i = 0;
-    while(sindex == -1 && i < sm->sqty) {
-        if(FD_ISSET(sm->pipe[i].out, &sm->rfds)) {
+    while(sindex == -1 && i < sm->slaveQty) {
+        if(FD_ISSET(sm->pipes[i].out, &sm->readFds)) {
             sindex = i;
         }
         i++;
     }
 
+    // If no available slaves & select did not block
     if(sindex == -1) {
-        return -1;
+        errno = ECHILD;
+        return ERROR;
     }
 
+    // Read from slave
     char c;
-    while( bytesRead < bytes-2 && read(sm->pipe[sindex].out, &c, 1) > 0 && c != '\0' && c != '\n') {
+    while(bytesRead < bytes - 2 && read(sm->pipes[sindex].out, &c, 1) > 0 && c != '\0' && c != '\n') {
         buff[bytesRead++] = c;
     }
     buff[bytesRead++] = '\n';
     buff[bytesRead] = '\0';
+    sm->filesProcessed++;
 
-    sm->to_be_read--;
-    FD_CLR(sm->pipe[sindex].out, &sm->rfds);
-    sm->f_processed++;
-    if(sm->f_sent != sm->filec) {
-        sendFile(sm,sm->pipe[sindex].in, sm->filev[sm->f_sent]);
-        sm->f_sent++;
+    // Remove slave from available slave list
+    sm->toBeRead--;
+    FD_CLR(sm->pipes[sindex].out, &sm->readFds);
+
+    // Send new file
+    if (sm->filesSent != sm->fileQty) {
+        sendFile(sm, sm->pipes[sindex].in, sm->files[sm->filesSent]);
+        sm->filesSent++;
     }
+
     return bytesRead;
 }
 
 void freeSm(smADT sm) {
-    for (int i = 0; i < sm->sqty; i++){
-        close(sm->pipe[i].in);
-        close(sm->pipe[i].out);
+    if (sm == NULL) {
+        errno = EINVAL;
+        return;
     }
 
-    free(sm->pipe);
+    // Free slave resources
+    if (sm->pipes != NULL) {
+        for (int i = 0; i < sm->slaveQty; i++){
+            if (close(sm->pipes[i].in) == ERROR || close(sm->pipes[i].out) == ERROR) {
+                return;
+            }
+        }
+        free(sm->pipes);
+    }
+
     free(sm);
     return;
 }
 
 int hasNextFile(smADT sm){
-    return sm->f_processed < sm->filec;
+    if (sm == NULL) {
+        return 0;
+    }
+
+    return sm->filesProcessed < sm->fileQty;
 }
 
 static void sendFile(smADT sm, fd_t fd, char * filename) {
-    if (sm->f_sent < sm->filec)
-    {
-       dprintf(fd, "%s\n",filename);
-
+    if (sm->filesSent == sm->fileQty) {
+        return;
     }
-    return 1;
 
+    dprintf(fd, "%s\n",filename);
 }
 
 
 static int startSlaves(smADT sm) {
     if(sm == NULL) {
-        errno = ENOMEM;
-        return -1;
+        errno = EINVAL;
+        return ERROR;
     }
 
-    for(int i = 0; i < sm->sqty; i++) {
+    for(int i = 0; i < sm->slaveQty; i++) {
         fd_t ptc[2];
         fd_t ctp[2];
 
-        if(-1 == pipe(ptc) || -1 == pipe(ctp)) {
-            return -1;
+        // Create pipes
+        if(pipe(ptc) == ERROR || pipe(ctp) == ERROR) {
+            return ERROR;
         }
 
-        sm->pipe[i].in=ptc[WRITE];
-        sm->pipe[i].out=ctp[READ];
+        sm->pipes[i].in = ptc[WRITE];
+        sm->pipes[i].out = ctp[READ];
 
 
         int pid = fork();
         switch(pid) {
-            case -1:
-                return -1;
+            case ERROR:
+                return ERROR;
                 break;
             case 0:
 
-                // Close other slave processes pipes
+                // Close other slave & unused parent pipe ends
                 for (int j = 0; j < i; j++){
-                    if(-1==close(sm->pipe[j].in))
-                        failNExit("Error when closing pipe read end1");
-                    if(-1==close(sm->pipe[j].out))
-                        failNExit("Error when closing pipe write end2");
+                    if(close(sm->pipes[j].in) == ERROR || close(sm->pipes[j].out) == ERROR)
+                        return ERROR;
                 }
 
-                // Connect father to child pipe to child stdin
-                if (close(ptc[WRITE]) == -1) {
-                    failNExit("Error when closing pipe write end3 ");
+                if (close(ptc[WRITE]) == ERROR || close(ctp[READ]) == ERROR) {
+                    return ERROR;
                 }
 
-                // Connect child to father pipe to child stdout
-                if (close(ctp[READ]) == -1) {
-                    failNExit("Error when closing pipe read end5");
+                // Connect child to father pipe to child stdout & father to child pipe to stdin
+                if (dup2(ptc[READ], STDIN_FILENO) == ERROR || dup2(ctp[WRITE], STDOUT_FILENO) == ERROR) {
+                    return ERROR;
                 }
 
-                if (dup2(ptc[READ], STDIN_FILENO) == -1) {
-                    failNExit("Error when duplicating pipe4");
-                }
-
-                if (dup2(ctp[WRITE], STDOUT_FILENO) == -1) {
-                    failNExit("Error when duplicating pipe6");
-                }
-
-                execv(SLAVE_PATH, (char **)NULL);
+                execv(SLAVE_PATH, (char **) {NULL});
 
                 // If execv fails, it returns and we exit
-                failNExit("Error with execv7");
+                errno = ECHILD;
+                exit(EXIT_FAILURE);
 
                 break;
 
             default:
-                if(-1==close(ptc[READ])){
-                    failNExit("Error when closing pipe read end8");
-                }
-                if(-1==close(ctp[WRITE])){
-                    failNExit("Error when closing pipe write end9");
+                // Close unused slave pipe ends
+                if(close(ptc[READ]) == ERROR || close(ctp[WRITE]) == ERROR){
+                    return ERROR;
                 }
 
-                sendFile(sm, sm->pipe[i].in, sm->filev[sm->f_sent++]);
-                sendFile(sm,sm->pipe[i].in, sm->filev[sm->f_sent++]);
+                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent++]);
+                sendFile(sm,sm->pipes[i].in, sm->files[sm->filesSent++]);
                 break;
         }
     }
     return 1;
 }
 
-static void failNExit(const char *msg) {
-    fprintf(stderr, "%s", msg);
-    exit(EXIT_FAILURE);
+static int calculateSlaveQty(int fileQty, int filesPerSlave) {
+    if (fileQty < filesPerSlave) {
+        return fileQty;
+    }
+
+    int remainder = fileQty % filesPerSlave;
+    return (fileQty/filesPerSlave) + (remainder == 0 ? 0 : 1);
 }

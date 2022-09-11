@@ -38,12 +38,12 @@ pvs: $(CREDENTIALS)
 	plog-converter -a '64:1,2,3;GA:1,2,3;OP:1,2,3' -t tasklist -o report.tasks PVS-Studio.log
 
 cpp-check:
-	cppcheck --quiet --enable=all --force --inconclusive .
+	cppcheck --quiet --enable=all --force --inconclusive --suppress=missingIncludeSystem .
 
 clean:
 	@rm -rf *.o
 	@rm -rf $(BINARIES)
-	@rm -rf $(MD5_OUTPUT)
+	@rm -rf $(MD5_LOG_FILE)
 	@rm -rf $(PVS_OUTPUT)
 	@cd ADTs; make clean
 
