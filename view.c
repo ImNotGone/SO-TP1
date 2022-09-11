@@ -63,7 +63,3 @@ static void failNExit(const char *msg) {
     exit(EXIT_FAILURE);
 }
 
-static void failNExit(const char *msg) {
-    perror(msg);
-    exit(EXIT_FAILURE);
-}

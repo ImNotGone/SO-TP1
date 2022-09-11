@@ -21,8 +21,12 @@ typedef struct smCDT {
     int fileQty;
     char **files;
 
-    // Set for select
+    // Slave program path
+    const char *slavePath;
+
+    // Set for select & flag to check if there are slaves available to read
     fd_set childToFatherFds;
+    int slavesAvailable;
 
 } smCDT;
 
@@ -37,7 +41,7 @@ static int pollSlaves(smADT sm);
 static int createSlave(smADT sm);
 static int calculateMaxSlaveQty(int fileQty, int minFilesPerSlave);
 
-smADT newSm(int fileQty, char **files, int minFilesPerSlave) {
+smADT newSm(int fileQty, char **files, int minFilesPerSlave, const char *slavePath) {
     if(files == NULL || minFilesPerSlave <= 0 || fileQty <= 0) {
         errno = EINVAL;
         return NULL;
@@ -59,6 +63,8 @@ smADT newSm(int fileQty, char **files, int minFilesPerSlave) {
 
     new->slavesQty = 0;
 
+    new->slavePath = slavePath;
+
     // Files
     new->fileQty = fileQty;
     new->filesSent = 0;
@@ -67,6 +73,7 @@ smADT newSm(int fileQty, char **files, int minFilesPerSlave) {
 
     // Initialize file descriptor set
     FD_ZERO(&new->childToFatherFds);
+    new->slavesAvailable = 0;
 
     return new;
 }
@@ -83,10 +90,13 @@ int smHasFilesLeft(smADT sm) {
 ssize_t smRetrieve(smADT sm, char *buffer, int bufferSize) {
 
     // Update file descriptor set
-    if (pollSlaves(sm) == ERROR) {
-        return ERROR;
-    }
 
+    if (sm->slavesAvailable == 0) {
+        if (pollSlaves(sm) == ERROR) {
+            return ERROR;
+        }
+    }
+    
     // Send file to first available slave and read response
     for (int i = 0; i < sm->slavesQty; i++) {
         slave_pipe_t *currentSlave = &sm->slavePipes[i];
@@ -100,6 +110,10 @@ ssize_t smRetrieve(smADT sm, char *buffer, int bufferSize) {
             if (bytesRead == ERROR) {
                 return ERROR;
             }
+
+            // Remove slave from available set
+            FD_CLR(currentSlave->childToFather, &sm->childToFatherFds);
+            sm->slavesAvailable--;
 
             // Send next file to slave
             sendFile(sm, sm->files[sm->filesSent], currentSlave->fatherToChild);
@@ -228,7 +242,7 @@ static int createSlave(smADT sm) {
         }
 
         // Execute slave program, if it fails it returns and we exit
-        execv(SLAVE_PATH, (char **){NULL});
+        execv(sm->slavePath, (char **){NULL});
 
         exit(EXIT_FAILURE);
     }
@@ -258,7 +272,8 @@ static int pollSlaves(smADT sm) {
     }
 
     // Check which slaves have finished
-    if (select(nfds + 1, &sm->childToFatherFds, NULL, NULL, sm->slavesQty == sm->slavesDim ? NULL : &timeout) == ERROR) {
+    sm->slavesAvailable = select(nfds + 1, &sm->childToFatherFds, NULL, NULL, sm->slavesQty == sm->slavesDim ? NULL : &timeout);
+    if (sm->slavesAvailable == ERROR) {
         freeSm(sm);
         return ERROR;
     }

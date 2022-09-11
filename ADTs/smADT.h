@@ -8,12 +8,9 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-#define SLAVE_PATH "./slave"
-
-
 typedef struct smCDT * smADT;
 
-smADT newSm(int fileQty, char **files, int minFilesPerSlave);
+smADT newSm(int fileQty, char **files, int minFilesPerSlave, const char *slavePath);
 
 int smHasFilesLeft(smADT sm);
 

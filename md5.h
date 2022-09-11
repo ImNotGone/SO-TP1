@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #define PATH_TO_SLAVE "./slave"
+#define MIN_FILES_PER_SLAVE 2
 #define MAX_OUTPUT 4096
 
 #endif

@@ -5,6 +5,7 @@
 #define MAX_CMD_LEN 2048
 #define MD5_OUT_LEN 32
 #define CMD_FMT_STR "md5sum %s"
+
 // %7d was chosen based on running this command
 // cat /proc/sys/kernel/pid_max => 4194304 (7 digit number)
 #define OUT_FMT_STR "PID: %7d, md5: %s, File: %s\n"
