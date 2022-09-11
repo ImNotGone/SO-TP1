@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     pshmADT pshm = newPshm("shm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
 
     // Print views arguments for use with pipe
-    printf("%s %d", "shm", fileQty);
+    printf("%s %d\n", "shm", fileQty);
 
     // Create output file
     int outputFileFd = open("outputFile", O_CREAT | O_WRONLY | O_TRUNC, 00666);
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     char **files = &argv[1];
 
     // Initialize slaves
-    smADT sm = newSm(fileQty, files);
+    smADT sm = newSm(fileQty, files, MIN_FILES_PER_SLAVE);
 
     // Retrieve info from slaves
     int bytesRead = 0;

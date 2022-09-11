@@ -9,3 +9,4 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
+#define MIN_FILES_PER_SLAVE 2
