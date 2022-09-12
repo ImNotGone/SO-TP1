@@ -1,6 +1,6 @@
 COMP=gcc
 COMP_FLAGS=-Wall -std=c99 -pedantic
-BINARIES=md5 slave view testwrite testread
+BINARIES=md5 slave view
 MD5_LOG_FILE=md5.log
 PVS_OUTPUT=PVS-Studio.log report.tasks strace_out
 CREDENTIALS=.config/PVS-Studio/PVS-Studio.lic

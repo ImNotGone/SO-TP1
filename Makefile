@@ -22,12 +22,6 @@ slave: slave.o $(OBJECTS_ADT)
 view: view.o $(OBJECTS_ADT)
 	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
 
-testwrite: testwrite.o
-	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
-
-testread: testread.o
-	$(LD) $(LD_FLAGS) $(OBJECTS_ADT) $< -o $@
-
 $(CREDENTIALS):
 	    pvs-studio-analyzer credentials "PVS-Studio Free" "FREE-FREE-FREE-FREE"
 
