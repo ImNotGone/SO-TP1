@@ -122,9 +122,8 @@ ssize_t smRead(smADT sm, char * buff, size_t bytes) {
     FD_CLR(sm->pipes[sindex].out, &sm->readFds);
 
     // Send new file
-    if (sm->filesSent != sm->fileQty) {
+    if (sm->filesSent < sm->fileQty) {
         sendFile(sm, sm->pipes[sindex].in, sm->files[sm->filesSent]);
-        sm->filesSent++;
     }
 
     return bytesRead;
@@ -159,11 +158,13 @@ int hasNextFile(smADT sm){
 }
 
 static void sendFile(smADT sm, fd_t fd, char * filename) {
+    // If there are no more files to send, do nothing
     if (sm->filesSent == sm->fileQty) {
         return;
     }
 
     dprintf(fd, "%s\n",filename);
+    sm->filesSent++;
 }
 
 
@@ -223,9 +224,9 @@ static int startSlaves(smADT sm) {
                     return ERROR;
                 }
 
-                // Send files
-                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent++]);
-                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent++]);
+                // Try to send files, if there are no more files to send, sendFile does nothing
+                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent]);
+                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent]);
 
                 break;
         }
