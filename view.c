@@ -1,6 +1,7 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 #include "view.h"
+#include <stdio.h>
 
 #define SCAN_FORMAT "%%%ds %%d"
 #define SCAN_FORMAT_SIZE 16
@@ -55,8 +56,9 @@ int main(int argc, char *argv[]) {
             failNExit("Error reading pshm");
         }
 
-        printf("%s\n", buffer);
+        printf("%s", buffer);
     }
+    putchar('\n');
 
     freePshm(pshm);
     return 0;
