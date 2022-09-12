@@ -21,6 +21,10 @@ int main(int argc, char *argv[]) {
         failNExit(errorBuff);
     }
 
+
+    int fileQty = argc - 1;
+
+
     // Initialize shared memory
     pshmADT pshm = newPshm("shm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (pshm == NULL) {
@@ -35,13 +39,12 @@ int main(int argc, char *argv[]) {
 
     // Files to process
     char ** files = &argv[1];
-    int fileQty = argc - 1;
 
     // Communicate with view process
     printf("%s %d\n", "shm", fileQty);
 
     // Initialize slaves
-    smADT sm = newSm(fileQty, files, PATH_TO_SLAVE);
+    smADT sm = newSm(fileQty, files, MIN_FILES_PER_SLAVE, PATH_TO_SLAVE);
     if (sm == NULL) {
         failNExit("Error creating slave manager");
     }
@@ -50,9 +53,9 @@ int main(int argc, char *argv[]) {
 
     char buffer[MAX_OUTPUT] = {0};
 
-    while(hasNextFile(sm)){
+    while(smHasFilesLeft(sm)){
         // Read from slave
-        int nBytes= smRead(sm, buffer, MAX_OUTPUT);
+        int nBytes = smRetrieve(sm, buffer, MAX_OUTPUT);
         if (nBytes == -1) {
             failNExit("Error reading from slave");
         }
@@ -62,7 +65,7 @@ int main(int argc, char *argv[]) {
             failNExit("Error writing to log file");
         }
 
-        if(writePshm(pshm, buffer, nBytes) == 0){
+        if (writePshm(pshm, buffer, nBytes) == 0){
             failNExit("Error writing to shared memory");
         }
     }
