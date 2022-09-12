@@ -17,7 +17,7 @@ Requirements
 
 This project requires the following to be built & run
  * [Docker][docker]
- * [Agodio-Image][agodio] or [ImNotGone-Image][imnotgone]
+ * [Agodio-Image][agodio] or [ImNotGone-Image][imnotgone] (based on agodio's image)
 
 Agodio's image requires adittional steps to for example update pvs-studio (linked below)
 
@@ -54,7 +54,7 @@ or
 ```
 ### Terminal 2 (this info should be passed as arguments, or stdin inputs)
  *     ./view <INFO1> <INFO2> ...
-        
+
  *     ./view
        <INFO1><ENTER>
        <INFO2><ENTER>
