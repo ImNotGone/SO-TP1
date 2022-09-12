@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
     // Create output file
     fd_t md5LogFile = open(MD5_LOG_FILE_NAME, O_CREAT | O_WRONLY | O_TRUNC, 00666);
     if (md5LogFile == -1) {
+        freePshm(pshm);
         failNExit("Error opening log file");
     }
 
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
     // Initialize slaves
     smADT sm = newSm(fileQty, files);
     if (sm == NULL) {
+        freePshm(pshm);
         failNExit("Error creating slave manager");
     }
 
@@ -54,15 +56,21 @@ int main(int argc, char *argv[]) {
         // Read from slave
         int nBytes= smRead(sm, buffer, MAX_OUTPUT);
         if (nBytes == -1) {
+            freePshm(pshm);
+            freeSm(sm);
             failNExit("Error reading from slave");
         }
 
         // Print to output file and shared memory
         if (write(md5LogFile, buffer,nBytes) == -1) {
+            freePshm(pshm);
+            freeSm(sm);
             failNExit("Error writing to log file");
         }
 
         if(writePshm(pshm, buffer, nBytes) == -1){
+            freePshm(pshm);
+            freeSm(sm);
             failNExit("Error writing to shared memory");
         }
     }
@@ -79,6 +87,6 @@ int main(int argc, char *argv[]) {
 }
 
 static void failNExit(const char *msg) {
-    fprintf(stderr, "%s", msg);
+    perror(msg);
     exit(EXIT_FAILURE);
 }
