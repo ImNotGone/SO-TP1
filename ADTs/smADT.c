@@ -223,8 +223,10 @@ static int startSlaves(smADT sm) {
                     return ERROR;
                 }
 
+                // Send files
                 sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent++]);
-                sendFile(sm,sm->pipes[i].in, sm->files[sm->filesSent++]);
+                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent++]);
+
                 break;
         }
     }
@@ -232,10 +234,6 @@ static int startSlaves(smADT sm) {
 }
 
 static int calculateSlaveQty(int fileQty, int filesPerSlave) {
-    if (fileQty < filesPerSlave) {
-        return fileQty;
-    }
-
     int remainder = fileQty % filesPerSlave;
     return (fileQty/filesPerSlave) + (remainder == 0 ? 0 : 1);
 }
