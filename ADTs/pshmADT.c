@@ -7,9 +7,7 @@ typedef int fd_t;
 typedef struct pshmCDT {
     const char * shmName;
     const char * semRwName;
-    const char * semConnectedName;
     sem_t * semRw;
-    sem_t * semConnected;
     char * addr;
     int writeOff;
     int readOff;
@@ -18,7 +16,6 @@ typedef struct pshmCDT {
 } pshmCDT;
 
 #define SEM_RW "/SEM_RW"
-#define SEM_CONNECTED "/SEM_CONECTED"
 #define SHM_ERROR -1
 
 pshmADT newPshm(const char *shmName, int oflag, mode_t mode) {
@@ -33,7 +30,6 @@ pshmADT newPshm(const char *shmName, int oflag, mode_t mode) {
 
     new->shmName = shmName;
     new->semRwName = SEM_RW;
-    new->semConnectedName = SEM_CONNECTED;
 
     new->fd = shm_open(new->shmName, oflag, mode);
     if (new->fd == SHM_ERROR) {
@@ -58,14 +54,6 @@ pshmADT newPshm(const char *shmName, int oflag, mode_t mode) {
         freePshm(new);
         return NULL;
     }
-
-    new->semConnected = sem_open(new->semConnectedName, O_CREAT, mode, 0);
-    if(new->semConnected == SEM_FAILED) {
-        freePshm(new);
-        return NULL;
-    }
-    // Notify that i'm connected
-    sem_post(new->semConnected);
 
     int prot = PROT_READ; // Default
     if (oflag & O_RDWR) {
@@ -144,22 +132,14 @@ void freePshm(pshmADT pshm) {
         errno = EINVAL;
         return;
     }
-    sem_trywait(pshm->semConnected); // non blocking decrement
-
-    int remainingUsers = 0;
-    sem_getvalue(pshm->semConnected, &remainingUsers);
 
     munmap(pshm->addr, pshm->size);
     close(pshm->fd);
 
-    if (remainingUsers == 0) {
-        shm_unlink(pshm->shmName);
-        sem_unlink(pshm->semRwName);
-        sem_unlink(pshm->semConnectedName);
-    }
+    shm_unlink(pshm->shmName);
+    sem_unlink(pshm->semRwName);
 
     sem_close(pshm->semRw);
-    sem_close(pshm->semConnected);
     free(pshm);
     return;
 }
