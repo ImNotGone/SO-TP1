@@ -31,8 +31,6 @@ pshmADT newPshm(const char *shmName, int oflag, mode_t mode) {
         return NULL;
     }
 
-    // TODO: CHECK FAILURE
-    // strncpy(new->shmName, name, MAX_NAME_LEN - 1);
     new->shmName = shmName;
     new->semRwName = SEM_RW;
     new->semConnectedName = SEM_CONNECTED;

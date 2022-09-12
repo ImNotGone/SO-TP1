@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
             failNExit("Error writing to log file");
         }
 
-        if(writePshm(pshm, buffer, nBytes) == 0){
+        if(writePshm(pshm, buffer, nBytes) == -1){
             failNExit("Error writing to shared memory");
         }
     }

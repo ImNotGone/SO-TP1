@@ -9,18 +9,18 @@ static void failNExit(const char *msg);
 
 int main(int argc, char *argv[]) {
 
-    pshmADT pshm;
-    int fileAmount;
+    pshmADT pshm = NULL;
+    int fileQty = 0;
 
     // Parse arguments
     if (argc == 1) {
-        // Read arguments from stdin ($> pshmName fileAmount)
+        // Read arguments from stdin ($> pshmName fileQty)
         char pshmName[BUFFER_SIZE];
         char scanFormat[SCAN_FORMAT_SIZE];
 
         // scanf "%(BUFFER_SIZE)s %(BUFFER_SIZE)s %d"
         sprintf(scanFormat, SCAN_FORMAT, BUFFER_SIZE);
-        if (scanf(scanFormat, pshmName, &fileAmount) != 2) {
+        if (scanf(scanFormat, pshmName, &fileQty) != 2) {
             errno = EINVAL;
             failNExit("Invalid stdin arguments");
         }
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     } else if (argc == 3) {
         // Get arguments from argv
         pshm = newPshm(argv[1], O_RDWR, S_IRUSR | S_IWUSR);
-        fileAmount = strtol(argv[2], NULL, 10); // Text to NUM (Base 10)
+        fileQty = strtol(argv[2], NULL, 10); // Text to NUM (Base 10)
 
     } else {
         errno = EINVAL;
@@ -42,10 +42,14 @@ int main(int argc, char *argv[]) {
         failNExit("Error creating pshm");
     }
 
+    if (fileQty < 0) {
+        failNExit("Error retrieving fileQty");
+    }
+
     // Read shared memory once per file
     char buffer[BUFFER_SIZE] = {0};
 
-    for (int i = 0; i < fileAmount; i++) {
+    for (int i = 0; i < fileQty; i++) {
         int bytesRead = readPshm(pshm, buffer, BUFFER_SIZE);
         if (bytesRead == -1) {
             failNExit("Error reading pshm");

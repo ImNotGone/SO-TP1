@@ -32,14 +32,14 @@ typedef struct smCDT {
 
 static void sendFile(smADT sm, fd_t fd, char * filename);
 static int startSlaves(smADT sm);
-static int calculateSlaveQty(int fileQty, int filesPerSlave); 
+static int calculateSlaveQty(int fileQty, int filesPerSlave);
 
 smADT newSm(int fileQty, char ** files) {
     if(files == NULL || fileQty <= 0) {
         errno = EINVAL;
         return NULL;
     }
-    
+
     smADT new = malloc(sizeof(smCDT));
     if(new == NULL) {
         return NULL;
@@ -208,7 +208,8 @@ static int startSlaves(smADT sm) {
                     return ERROR;
                 }
 
-                execv(SLAVE_PATH, (char **) {NULL});
+                static char * const SLAVE_ARGS[] = {SLAVE_PATH, NULL};
+                execv(SLAVE_PATH, SLAVE_ARGS);
 
                 // If execv fails, it returns and we exit
                 errno = ECHILD;
