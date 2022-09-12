@@ -209,6 +209,10 @@ static int startSlaves(smADT sm) {
                     return ERROR;
                 }
 
+                if (close(ptc[READ]) == ERROR || close(ctp[WRITE]) == ERROR) {
+                    return ERROR;
+                }
+
                 static char * const SLAVE_ARGS[] = {SLAVE_PATH, NULL};
                 execv(SLAVE_PATH, SLAVE_ARGS);
 

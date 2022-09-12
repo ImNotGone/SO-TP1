@@ -27,13 +27,6 @@ int main(int argc, char *argv[]) {
         failNExit("Error creating shared memory");
     }
 
-    // Create output file
-    fd_t md5LogFile = open(MD5_LOG_FILE_NAME, O_CREAT | O_WRONLY | O_TRUNC, 00666);
-    if (md5LogFile == -1) {
-        freePshm(pshm);
-        failNExit("Error opening log file");
-    }
-
     // Files to process
     char ** files = &argv[1];
     int fileQty = argc - 1;
@@ -51,6 +44,14 @@ int main(int argc, char *argv[]) {
     sleep(2);
 
     char buffer[MAX_OUTPUT] = {0};
+
+    // Create output file
+    fd_t md5LogFile = open(MD5_LOG_FILE_NAME, O_CREAT | O_WRONLY | O_TRUNC, 00666);
+    if (md5LogFile == -1) {
+        freePshm(pshm);
+        freeSm(sm);
+        failNExit("Error opening log file");
+    }
 
     while(hasNextFile(sm)){
         // Read from slave
