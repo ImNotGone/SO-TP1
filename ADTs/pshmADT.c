@@ -5,12 +5,17 @@
 typedef int fd_t;
 
 typedef struct pshmCDT {
+    // Names for semaphore and shared memory
     const char * shmName;
     const char * semRwName;
     sem_t * semRw;
+
+    // Memory address and offsets
     char * addr;
     int writeOff;
     int readOff;
+    
+    // Mem
     fd_t fd;
     size_t size;
 } pshmCDT;

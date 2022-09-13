@@ -109,12 +109,7 @@ ssize_t smRead(smADT sm, char * buff, size_t bytes) {
     }
 
     // Read from slave
-    char c;
-    while(bytesRead < bytes - 2 && read(sm->pipes[sindex].out, &c, 1) > 0 && c != '\0' && c != '\n') {
-        buff[bytesRead++] = c;
-    }
-    buff[bytesRead++] = '\n';
-    buff[bytesRead] = '\0';
+    bytesRead = read(sm->pipes[sindex].out, buff, bytes);
     sm->filesProcessed++;
 
     // Remove slave from available slave list
@@ -196,29 +191,34 @@ static int startSlaves(smADT sm) {
 
                 // Close other slave & unused parent pipe ends
                 for (int j = 0; j < i; j++){
-                    if(close(sm->pipes[j].in) == ERROR || close(sm->pipes[j].out) == ERROR)
-                        return ERROR;
+                    if(close(sm->pipes[j].in) == ERROR || close(sm->pipes[j].out) == ERROR) {
+                        perror("close");
+                        _exit(ERROR); // kill parent
+                    }
                 }
 
                 if (close(ptc[WRITE]) == ERROR || close(ctp[READ]) == ERROR) {
-                    return ERROR;
+                    perror("close");
+                    _exit(ERROR); // kill parent
                 }
 
                 // Connect child to father pipe to child stdout & father to child pipe to stdin
                 if (dup2(ptc[READ], STDIN_FILENO) == ERROR || dup2(ctp[WRITE], STDOUT_FILENO) == ERROR) {
-                    return ERROR;
+                    perror("dup2");
+                    _exit(ERROR); // kill parent
                 }
 
                 if (close(ptc[READ]) == ERROR || close(ctp[WRITE]) == ERROR) {
-                    return ERROR;
+                    perror("close");
+                    _exit(ERROR); // kill parent
                 }
 
                 static char * const SLAVE_ARGS[] = {SLAVE_PATH, NULL};
                 execv(SLAVE_PATH, SLAVE_ARGS);
 
-                // If execv fails, it returns and we exit
-                errno = ECHILD;
-                exit(EXIT_FAILURE);
+                // If execv fails, it sets errno
+                perror("execv");
+                _exit(EXIT_FAILURE); // kill parent
 
                 break;
 
@@ -229,7 +229,6 @@ static int startSlaves(smADT sm) {
                 }
 
                 // Try to send files, if there are no more files to send, sendFile does nothing
-                sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent]);
                 sendFile(sm, sm->pipes[i].in, sm->files[sm->filesSent]);
 
                 break;
