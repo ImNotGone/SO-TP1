@@ -7,7 +7,8 @@
 #define CMD_FMT_STR "md5sum %s"
 // %7d was chosen based on running this command
 // cat /proc/sys/kernel/pid_max => 4194304 (7 digit number)
-#define OUT_FMT_STR "PID: %7d, md5: %s, File: %s\n"
+#define OUT_FMT_STR "PID: %7d, md5: %-32s, File: %s\n"
+#define NAF_ERR_STR "[ERROR] NOT A FILE"
 
 static void formatOutput(char *output, FILE *stream);
 static void solve(char *filename);
@@ -56,7 +57,7 @@ static void formatOutput(char *output, FILE *stream) {
 static void solve(char *filename) {
 
     if (!checkPath(filename)) {
-        fprintf(stdout, "%s is not a file\n", filename);
+        fprintf(stdout, OUT_FMT_STR, getpid(), NAF_ERR_STR, filename);
         return;
     }
     // === cmd ===
