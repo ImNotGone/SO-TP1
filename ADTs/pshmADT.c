@@ -23,6 +23,13 @@ pshmADT newPshm(const char *shmName, int oflag, mode_t mode) {
         errno = EINVAL; // Invalid argument
         return NULL;
     }
+
+    if(oflag & O_CREAT) {
+        // Protect from posible errors
+        sem_unlink(SEM_RW);
+        shm_unlink(shmName);
+    }
+
     pshmADT new = malloc(sizeof(pshmCDT));
     if (new == NULL) {
         return NULL;
