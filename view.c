@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
         int bytesRead = read(fifoFD, buffer, BUFFER_SIZE - 1);
 
         if (bytesRead == -1) {
-            failNExit("Error reading pshm");
+            failNExit("Error reading from pipe");
         }
 
         buffer[bytesRead] = 0;
