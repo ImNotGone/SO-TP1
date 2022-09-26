@@ -10,41 +10,42 @@ static void failNExit(const char *msg);
 
 int main(int argc, char *argv[]) {
 
-    pshmADT pshm = NULL;
+
     int fileQty = 0;
+
+    int fifoFD = -1;
 
     // Parse arguments
     if (argc == 1) {
         // Read arguments from stdin ($> pshmName fileQty)
-        char pshmName[BUFFER_SIZE];
+        char filename[BUFFER_SIZE];
         char scanFormat[SCAN_FORMAT_SIZE];
 
         // scanf "%(BUFFER_SIZE)s %(BUFFER_SIZE)s %d"
         sprintf(scanFormat, SCAN_FORMAT, BUFFER_SIZE);
-        if (scanf(scanFormat, pshmName, &fileQty) != 2) {
+        if (scanf(scanFormat, filename, &fileQty) != 2) {
             errno = EINVAL;
             failNExit("Invalid stdin arguments");
         }
 
-        pshm = newPshm(pshmName, O_RDWR, S_IRUSR | S_IWUSR);
-
+       fifoFD = open(filename, O_RDONLY);
     } else if (argc == 3) {
         // Get arguments from argv
-        pshm = newPshm(argv[1], O_RDWR, S_IRUSR | S_IWUSR);
         fileQty = strtol(argv[2], NULL, 10); // Text to NUM (Base 10)
+        fifoFD = open(argv[1], O_RDONLY);
 
     } else {
         errno = EINVAL;
         failNExit("Invalid arguments");
     }
 
-    // Validate shared memory is vaild
-    if (pshm == NULL) {
-        failNExit("Error creating pshm");
+    if(fifoFD==-1){
+        failNExit("error opening fifo pipe");
     }
 
+
+
     if (fileQty < 0) {
-        freePshm(pshm);
         failNExit("Error retrieving fileQty");
     }
 
@@ -52,17 +53,20 @@ int main(int argc, char *argv[]) {
     char buffer[BUFFER_SIZE] = {0};
 
     for (int i = 0; i < fileQty; i++) {
-        int bytesRead = readPshm(pshm, buffer, BUFFER_SIZE);
+        int bytesRead = read(fifoFD, buffer, BUFFER_SIZE - 1);
+
         if (bytesRead == -1) {
-            freePshm(pshm);
             failNExit("Error reading pshm");
         }
 
-        printf("%s", buffer);
-    }
-    putchar('\n');
+        buffer[bytesRead] = 0;
 
-    freePshm(pshm);
+        printf("%s" , buffer);
+    }
+
+    if(close(fifoFD) ==-1){
+        failNExit("error closing fifo pipe");
+    }
     return 0;
 }
 
